@@ -1,193 +1,117 @@
-* {
-  box-sizing: border-box;
+const state = { type: "data", plans: {} };
+
+const planEl = document.querySelector("#plan");
+const phoneEl = document.querySelector("#phone");
+const emailEl = document.querySelector("#email");
+const totalEl = document.querySelector("#total");
+const payEl = document.querySelector("#pay");
+const messageEl = document.querySelector("#message");
+
+const naira = (n) => new Intl.NumberFormat("en-NG", {
+  style: "currency",
+  currency: "NGN",
+  maximumFractionDigits: 0
+}).format(n);
+
+async function loadPlans() {
+  const res = await fetch("/api/plans");
+  state.plans = await res.json();
+  renderPlans();
 }
 
-:root {
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #f7f8fb;
-  background: #0b1020;
-}
+function renderPlans() {
+  planEl.innerHTML = "";
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  background: radial-gradient(circle at 10% 0%, #17234a 0, #0b1020 42%);
-}
-
-.topbar {
-  height: 68px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 18px;
-  border-bottom: 1px solid #202a43;
-  background: rgba(11, 16, 32, 0.92);
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 800;
-}
-
-.logo {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
-  background: #fff;
-  color: #10182d;
-  font-weight: 900;
-}
-
-.status {
-  font-size: 12px;
-  color: #62e49a;
-}
-
-.container {
-  width: min(720px, 100%);
-  margin: auto;
-  padding: 22px 16px 36px;
-}
-
-.hero {
-  padding: 26px 4px 20px;
-}
-
-.eyebrow {
-  font-size: 12px;
-  letter-spacing: 1.6px;
-  color: #8ea0c9;
-  font-weight: 800;
-}
-
-h1 {
-  font-size: clamp(30px, 8vw, 52px);
-  line-height: 1.02;
-  margin: 8px 0 12px;
-}
-
-.hero-copy {
-  color: #aeb8cf;
-  line-height: 1.6;
-}
-
-.tabs {
-  display: flex;
-  gap: 8px;
-  margin: 10px 0 14px;
-}
-
-.tab {
-  flex: 1;
-  border: 1px solid #2a3551;
-  background: #141c31;
-  color: #aeb8cf;
-  padding: 14px;
-  border-radius: 13px;
-  font-weight: 800;
-  font-size: 15px;
-}
-
-.tab.active {
-  background: #fff;
-  color: #0b1020;
-}
-
-.card {
-  background: rgba(20, 28, 49, 0.96);
-  border: 1px solid #2a3551;
-  border-radius: 20px;
-  padding: 18px;
-}
-
-label {
-  display: block;
-  font-size: 13px;
-  color: #aeb8cf;
-  margin: 6px 0 8px;
-}
-
-select,
-input {
-  width: 100%;
-  border: 1px solid #34415f;
-  background: #0d1426;
-  color: #fff;
-  border-radius: 12px;
-  padding: 15px;
-  font: inherit;
-  margin-bottom: 14px;
-}
-
-.summary {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 2px;
-  color: #aeb8cf;
-}
-
-.summary strong {
-  font-size: 24px;
-  color: #fff;
-}
-
-.pay {
-  width: 100%;
-  border: 0;
-  border-radius: 13px;
-  padding: 16px;
-  background: #22c55e;
-  color: #06100a;
-  font-weight: 900;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-.pay:disabled {
-  opacity: 0.6;
-}
-
-.message {
-  min-height: 22px;
-  color: #ffb4b4;
-  font-size: 13px;
-}
-
-.features {
-  display: grid;
-  gap: 10px;
-  margin-top: 16px;
-}
-
-.features div {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  background: #11182b;
-  border: 1px solid #202a43;
-  border-radius: 14px;
-  padding: 14px;
-}
-
-.features span {
-  font-size: 13px;
-  color: #8f9bb5;
-}
-
-footer {
-  text-align: center;
-  color: #6f7b95;
-  font-size: 12px;
-  padding: 22px;
-}
-
-@media (min-width: 600px) {
-  .features {
-    grid-template-columns: repeat(3, 1fr);
+  for (const item of state.plans[state.type] || []) {
+    const option = document.createElement("option");
+    option.value = item.id;
+    option.textContent =
+      `${item.network} — ${item.name} — ${naira(item.price)}`;
+    planEl.appendChild(option);
   }
+
+  updateTotal();
+}
+
+function updateTotal() {
+  const item = (state.plans[state.type] || [])
+    .find(p => p.id === planEl.value);
+
+  totalEl.textContent = item ? naira(item.price) : "₦0";
+}
+
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab")
+      .forEach(b => b.classList.remove("active"));
+
+    btn.classList.add("active");
+    state.type = btn.dataset.type;
+    renderPlans();
+  });
+});
+
+planEl.addEventListener("change", updateTotal);
+
+payEl.addEventListener("click", async () => {
+  messageEl.textContent = "";
+
+  const phone = phoneEl.value.trim();
+  const email = emailEl.value.trim();
+
+  const item = (state.plans[state.type] || [])
+    .find(p => p.id === planEl.value);
+
+  if (!item) return show("Please select a plan.");
+
+  if (!/^0\d{10}$/.test(phone)) {
+    return show("Enter a valid 11-digit Nigerian phone number.");
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return show("Enter a valid email address.");
+  }
+
+  payEl.disabled = true;
+  payEl.textContent = "Opening Paystack…";
+
+  try {
+    const res = await fetch("/api/paystack/initialize", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        email,
+        phone,
+        productType: state.type,
+        planId: item.id,
+        amount: item.price
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || "Could not start payment.");
     }
+
+    window.location.href = data.authorization_url;
+
+  } catch (error) {
+    show(error.message);
+    payEl.disabled = false;
+    payEl.textContent = "Pay with Paystack";
+  }
+});
+
+function show(text) {
+  messageEl.textContent = text;
+}
+
+document.querySelector("#year").textContent =
+  new Date().getFullYear();
+
+loadPlans().catch(() =>
+  show("Could not load products. Please refresh.")
+);
